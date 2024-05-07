@@ -682,7 +682,6 @@ cat <<EOL > /etc/bind/jarkom/redzone.it31.com
                         604800 ); Negative Cache TTL
 @   IN  NS  redzone.it31.com.
 @   IN  A   192.232.4.2
-www IN CNAME redzone.it31.com.
 192.232.4.2 IN  PTR redzone.it31.com.
 siren   IN  A   192.232.3.2 
 ns1 IN  A   192.232.3.2
@@ -717,84 +716,25 @@ service bind9 restart
 ```bash
 allow-query{any;};
 ```
-- Setelah itu menambahkan subdomain pada config local georgopol dan membuat folder delegasi baru seperti file .sh dibawah ini:
+- Setelah itu menambahkan subdomain pada config local georgopol dan membuat folder delegasi baru dan konfigurasikan seperti file .sh dibawah ini:
 ```bash
 #!/bin/bash
 
-# Check for root privileges
-if [ "$(id -u)" -ne 0 ]; then
-    echo "Please run this script as root"
-    exit 1
-fi
+# Create directory for zone files if it doesn't exist
+    mkdir -p /etc/bind/delegasi
 
-config() {
-    # Check if BIND9 is installed
-    if ! dpkg -l | grep -q bind9; then
-        apt-get update 
-        apt-get install -y bind9 nano 
-    fi
-
-    # Create directory for zone files if it doesn't exist
-    mkdir -p /var/lib/bind/jarkom/
-    mkdir -p /etc/bind/delegasi/siren.redzone.it31.com
-
-    # Create a zone configuration
-    cat <<EOL > /etc/bind/named.conf.local
-zone "airdrop.it31.com" {
-    type slave;
-    masters { 192.232.1.2; }; 
-    file "/var/lib/bind/jarkom/airdrop.it31.com";
-};
-
-zone "redzone.it31.com" {
-    type slave;
-    masters { 192.232.1.2; };
-    file "/var/lib/bind/jarkom/redzone.it31.com";
-};
-
-zone "siren.redzone.it31.com" {
+# Buat reverse DNS (Record PTR)
+echo 'zone "siren.redzone.it31.com" {
     type master;
     file "/etc/bind/delegasi/siren.redzone.it31.com";
-};
+};' >> /etc/bind/named.conf.local
 
-zone "loot.it31.com" {
-    type slave;
-    masters { 192.232.1.2; };
-    file "/var/lib/bind/jarkom/loot.it31.com";
-};
+cp /etc/bind/db.local /etc/bind/delegasi/siren.redzone.it31.com
 
-zone "mylta.it31.com" {
-    type slave;
-    masters { 192.232.1.2; };
-    file "/var/lib/bind/jarkom/mylta.it31.com";
-};
-
-zone "tamat.it31.com" {
-    type slave;
-    masters { 192.232.1.2; };
-    file "/var/lib/bind/jarkom/tamat.it31.com";
-};
-EOL
-
-    # Restart BIND to apply changes
-    service bind9 restart
-}
-
-# Call the function to execute the configuration
-config
-```
-kemudian di running menggunakan:
-```bash
-chmod +x no9ga.sh
-./no9ga.sh
-```
-- Kemudian pada file konfigurasikan menuju georgopol /etc/bind/delegasi/siren.redzone.it31.com pada server georgopol dengan file .sh dibawah ini:
-```bash
-#!/bin/bash
-
-# Configure each domain
-    config() {
-cat <<EOL > /etc/bind/delegasi/siren.redzone.it31.com
+echo '
+;
+; BIND data file for local loopback interface
+;
 \$TTL 604800
 @   IN SOA siren.redzone.it31.com. root.siren.redzone.it31.com. (
             $(date +"%Y%m%d%H"); Serial
@@ -804,7 +744,55 @@ cat <<EOL > /etc/bind/delegasi/siren.redzone.it31.com
                         604800 ); Negative Cache TTL
 @   IN  NS  siren.redzone.it31.com.
 @   IN  A   192.232.3.2
-log   IN  A   192.232.3.2
+log   IN  A   192.232.3.2' > /etc/bind/delegasi/siren.redzone.it31.com
+
+service bind9 restart
+
+```
+kemudian di running menggunakan:
+```bash
+chmod +x no9ga.sh
+./no9ga.sh
+```
+
+Setelah semua dijalanin, kita cek Dan hasilnya seperti dibawah berarti sudah berjalan dengan baik.
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no9c1.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no9c2.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no9c3.png)
+
+### PROBLEM
+---
+10.	Markas juga meminta catatan kapan saja pesawat tempur tersebut menjatuhkan bom, maka buatlah subdomain baru di subdomain siren yaitu log.siren.redzone.xxxx.com serta aliasnya www.log.siren.redzone.xxxx.com yang juga mengarah ke Severny
+
+### SOLUTION
+---
+
+Untuk problem nomor 10 ini, kita tambahkan subdomain log.siren.redzone.it31.com pada domain redzone.it31.com yang juga mengarah ke severny seperti nomor 9 tadi. Jadi kita hanya menambahkan subdomain aja pada konfigurasinya, dengan cara file .sh berikut:
+```bash
+#!/bin/bash
+
+# Configure each domain
+    config() {
+cat <<EOL > /etc/bind/jarkom/redzone.it31.com
+\$TTL 604800
+@   IN SOA redzone.it31.com. root.redzone.it31.com. (
+            $(date +"%Y%m%d%H"); Serial
+                        604800 ; Refresh
+                        86400  ; Retry
+                        2419200 ; Expire
+                        604800 ); Negative Cache TTL
+@   IN  NS  redzone.it31.com.
+@   IN  A   192.232.4.2
+192.232.4.2 IN  PTR redzone.it31.com.
+siren   IN  A   192.232.3.2
+www IN  CNAME   siren.redzone.it31.com
+log.siren IN  A   192.232.3.2    
+ns1 IN  A   192.232.3.2
+its IN  NS  ns1
+@   IN  AAAA    ::1
 EOL
 
 
@@ -817,14 +805,73 @@ config
 ```
 kemudian di running menggunakan:
 ```bash
-chmod +x no9gb.sh
-./no9gb.sh
+chmod +x no10.sh
+./no10.sh
+```
+maka akan jalan dengan sendirinya. Dan hasilnya seperti dibawah berarti sudah berjalan dengan baik.
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no10c1.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no10c2.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no10c3.png)
+
+### PROBLEM
+---
+11.	Setelah pertempuran mereda, warga Erangel dapat kembali mengakses jaringan luar, tetapi hanya warga Pochinki saja yang dapat mengakses jaringan luar secara langsung. Buatlah konfigurasi agar warga Erangel yang berada diluar Pochinki dapat mengakses jaringan luar melalui DNS Server Pochinki
+
+### SOLUTION
+---
+
+Untuk problem nomor 11 ini, kita tinggal menggunakan DNS Forwarder yang digunakan untuk mengarahkan DNS Server ke IP yang ingin dituju.
+a. Edit file /etc/bind/named.conf.options pada server EniesLobby
+b. Uncomment pada bagian ini:
+```bash
+forwarders {
+    192.168.122.1; //IP dari erangel
+};
+```
+c. kemudian Comment pada bagian ini
+```bash
+// dnssec-validation auto;
+```
+Dan tambahkan
+```bash
+allow-query{any;};
+```
+d. Setelah itu di restart
+```bash
+service bind9 restart
+```
+Dan tambahkan nameserver IP erangel pada setiap client trus coba ping google.com, dan ping salah satu domain harusnya jika nameserver pada file /etc/resolv.conf di client diubah menjadi IP Pochinki maka akan di forward ke IP DNS GNS3 yaitu IP nameserver yang ada di Erangel dan bisa mendapatkan koneksi. dan hasilnya seperti dibawah ini:
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no11c1.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no11c2.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no11c3.png)
+
+### PROBLEM
+---
+12.	Karena pusat ingin sebuah website yang ingin digunakan untuk memantau kondisi markas lainnya maka deploy lah webiste ini (cek resource yg lb) pada severny menggunakan apache
+    
+### SOLUTION
+---
+Pada problem nomor 12 ini, karena menggunakan web server dan harus menginstall apache, lynx dan php, maka kita install terlebih dahulu tiap worker ulai dari 3 client (gatka, shelter dan quarry) dan 1 webserver yaitu severny. Dengan cara menjalankan file.sh berikut:
+```bash
+#!/bin/bash
+
+apt-get update
+apt-get install apache2
+service apache2 start
+apt-get install php
+sudo apt-get install lynx
+apt-get install libapache2-mod-php7.0
+a2enmod php7.0
 ```
 
 
-11.	Markas juga meminta catatan kapan saja pesawat tempur tersebut menjatuhkan bom, maka buatlah subdomain baru di subdomain siren yaitu log.siren.redzone.xxxx.com serta aliasnya www.log.siren.redzone.xxxx.com yang juga mengarah ke Severny
-12.	Setelah pertempuran mereda, warga Erangel dapat kembali mengakses jaringan luar, tetapi hanya warga Pochinki saja yang dapat mengakses jaringan luar secara langsung. Buatlah konfigurasi agar warga Erangel yang berada diluar Pochinki dapat mengakses jaringan luar melalui DNS Server Pochinki
-13.	Karena pusat ingin sebuah website yang ingin digunakan untuk memantau kondisi markas lainnya maka deploy lah webiste ini (cek resource yg lb) pada severny menggunakan apache
+
 14.	Tapi pusat merasa tidak puas dengan performanya karena traffic yag tinggi maka pusat meminta kita memasang load balancer pada web nya, dengan Severny, Stalber, Lipovka sebagai worker dan Mylta sebagai Load Balancer menggunakan apache sebagai web server nya dan load balancernya
 15.	Mereka juga belum merasa puas jadi pusat meminta agar web servernya dan load balancer nya diubah menjadi nginx
 16.	Markas pusat meminta laporan hasil benchmark dengan menggunakan apache benchmark dari load balancer dengan 2 web server yang berbeda tersebut dan meminta secara detail dengan ketentuan:
