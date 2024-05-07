@@ -857,7 +857,7 @@ Dan tambahkan nameserver IP erangel pada setiap client trus coba ping google.com
     
 ### SOLUTION
 ---
-Pada problem nomor 12 ini, karena menggunakan web server dan harus menginstall apache, lynx dan php, maka kita install terlebih dahulu tiap worker ulai dari 3 client (gatka, shelter dan quarry) dan 1 webserver yaitu severny. Dengan cara menjalankan file.sh berikut:
+Pada problem nomor 12 ini, karena menggunakan web server dan harus menginstall apache, lynx dan php, maka kita install terlebih dahulu tiap worker mulai dari 3 client (gatka, shelter dan quarry) dan 1 webserver yaitu severny. Dengan cara menjalankan file.sh berikut:
 ```bash
 #!/bin/bash
 
@@ -868,6 +868,8 @@ apt-get install php
 sudo apt-get install lynx
 apt-get install libapache2-mod-php7.0
 a2enmod php7.0
+apt-get wget //khusus severny
+apt-get unzip //khusus severny
 ```
 
 
