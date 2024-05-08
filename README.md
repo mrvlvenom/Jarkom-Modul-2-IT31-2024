@@ -872,19 +872,337 @@ apt-get wget //khusus severny
 apt-get unzip //khusus severny
 ```
 
+Kemudian pada saat webserver Severny dilakukan download source pada soal yang diperintahkan dengan cara berikut:
+```bash
+wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=11S6CzcvLG-dB0ws1yp494IURnDvtIOcq' -O 'dir-listing.zip'
+wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1xn03kTB27K872cokqwEIlk8Zb121HnfB' -O 'lb.zip'
+
+unzip -o dir-listing.zip -d dir-listing
+unzip -o lb.zip -d lb
+
+cp default.conf /etc/apache2/sites-available/default.conf
+rm /etc/apache2/sites-available/000-default.conf
+
+cp ./lb/worker/index.php /var/www/html/index.php
+
+a2ensite default.conf
+
+service apache2 restart
+```
+Setelah itu, coba cek di tiap client untuk cek apakah index.php sudah berjalan atau belum dengan cara ke IP Severny:
+```bash
+lynx http://192.232.4.2/index.php
+```
+
+Dan hasilnya seperti ini:
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no12c1.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no12c2.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no12c3.png)
+
+### PROBLEM
+---
+13. Tapi pusat merasa tidak puas dengan performanya karena traffic yag tinggi maka pusat meminta kita memasang load balancer pada web nya, dengan Severny, Stalber, Lipovka sebagai worker dan Mylta sebagai Load Balancer menggunakan apache sebagai web server nya dan load balancernya
+
+### SOLUTION
+---
+a. Pertama lakukan instalasi terlebih dahulu pada web server mylta:
+```bash
+#!/bin/bash
+
+apt-get update
+apy-get install -y bind9
+apt-get install apache2
+service apache2 start
+apt-get install php
+apt-get install lynx
+apt-get install libapache2-mod-php7.0
+a2enmod php7.0
+apt-get wget 
+apt-get unzip 
+```
+
+b. Setelah itu, masukkan konfigurasi pada /etc/apache2/sites-available/loadBalance.conf pada mylta:
+```bash
+<VirtualHost *:80>
+        # The ServerName directive sets the request scheme, hostname and port that
+        # the server uses to identify itself. This is used when creating
+        # redirection URLs. In the context of virtual hosts, the ServerName
+        # specifies what hostname must appear in the request's Host: header to
+        # match this virtual host. For the default virtual host (this file) this
+        # value is not decisive as it is used as a last resort host regardless.
+        # However, you must set it for any further virtual host explicitly.
+
+        ServerName 192.168.1.2
 
 
-14.	Tapi pusat merasa tidak puas dengan performanya karena traffic yag tinggi maka pusat meminta kita memasang load balancer pada web nya, dengan Severny, Stalber, Lipovka sebagai worker dan Mylta sebagai Load Balancer menggunakan apache sebagai web server nya dan load balancernya
-15.	Mereka juga belum merasa puas jadi pusat meminta agar web servernya dan load balancer nya diubah menjadi nginx
-16.	Markas pusat meminta laporan hasil benchmark dengan menggunakan apache benchmark dari load balancer dengan 2 web server yang berbeda tersebut dan meminta secara detail dengan ketentuan:
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+        <Proxy balancer://mycluster>
+        BalancerMember http://192.168.4.5
+        </Proxy>
+        ProxyPreserveHost On
+        ProxyPass / balancer://mycluster/
+        ProxyPassReverse / balancer://mycluster/
+
+        # Available loglevels: trace8, ..., trace1, debug, info, notice, warn,
+        # error, crit, alert, emerg.
+        # It is also possible to configure the loglevel for particular
+        # modules, e.g.
+        #LogLevel info ssl:warn
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        # For most configuration files from conf-available/, which are
+        # enabled or disabled at a global level, it is possible to
+        # include a line for only one particular virtual host. For example the
+        # following line enables the CGI configuration for this host only
+        # after it has been globally disabled with "a2disconf".
+        Include conf-available/serve-cgi-bin.conf
+</VirtualHost>
+
+# vim: syntax=apache ts=4 sw=4 sts=4 sr noet
+ServerName 127.0.0.1
+```
+
+c. Kemudian konfigurasi juga pada stalber:
+```bash
+wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=11S6CzcvLG-dB0ws1yp494IURnDvtIOcq' -O 'dir-listing.zip'
+wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1xn03kTB27K872cokqwEIlk8Zb121HnfB' -O 'lb.zip'
+
+unzip -o dir-listing.zip -d dir-listing
+unzip -o lb.zip -d lb
+
+cp default.conf /etc/apache2/sites-available/default.conf
+rm /etc/apache2/sites-available/000-default.conf
+
+cp ./lb/worker/index.php /var/www/html/index.php
+
+a2ensite default.conf
+
+service apache2 restart
+```
+dengan default config yang sama seperti nomor 12.
+
+d. Kemudian configurasi pada mylta menggunakan file.sh dibawah:
+
+```bash
+a2enmod proxy
+a2enmod proxy_http
+a2enmod proxy_balancer
+a2enmod lbmethod_byrequests
+
+cp loadBalance.conf /etc/apache2/sites-available/loadBalance.conf
+rm 000-default.conf
+
+a2ensite loadBalance.conf
+
+service apache2 restart
+```
+
+e. Maka dijalankan akan menghasilkan seperti hasil dibawah:
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no12c1.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no12c2.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no12c3.png)
+
+### PROBLEM
+---
+14.	Mereka juga belum merasa puas jadi pusat meminta agar web servernya dan load balancer nya diubah menjadi nginx
+
+### SOLUTION
+---
+
+
+
+### PROBLEM
+---
+15.	Markas pusat meminta laporan hasil benchmark dengan menggunakan apache benchmark dari load balancer dengan 2 web server yang berbeda tersebut dan meminta secara detail dengan ketentuan:
     o	Nama Algoritma Load Balancer
     o	Report hasil testing apache benchmark 
     o	Grafik request per second untuk masing masing algoritma. 
     o	Analisis
-17.	Karena dirasa kurang aman karena masih memakai IP, markas ingin akses ke mylta memakai mylta.xxx.com dengan alias www.mylta.xxx.com (sesuai web server terbaik hasil analisis kalian)
-18.	Agar aman, buatlah konfigurasi agar mylta.xxx.com hanya dapat diakses melalui port 14000 dan 14400.
-19.	Apa bila ada yang mencoba mengakses IP mylta akan secara otomatis dialihkan ke www.mylta.xxx.com
-20.	Karena probset sudah kehabisan ide masuk ke salah satu worker buatkan akses direktori listing yang mengarah ke resource worker2
-21.	Worker tersebut harus dapat di akses dengan tamat.xxx.com dengan alias www.tamat.xxx.com
+
+### SOLUTION
+---
+
+### PROBLEM
+---
+16. Karena dirasa kurang aman karena masih memakai IP, markas ingin akses ke mylta memakai mylta.xxx.com dengan alias www.mylta.xxx.com (sesuai web server terbaik hasil analisis kalian)
+
+### SOLUTION
+---
+a. Pertama kita konfigurasikan pada pochinki untuk ditambahkan seperti file.sh tersebut:
+```bash
+#!/bin/bash
+
+# Configure each domain
+    config() {
+cat <<EOL > /etc/bind/jarkom/mylta.it31.com
+\$TTL 604800
+@   IN SOA mylta.it31.com. root.mylta.it31.com. (
+            $(date +"%Y%m%d%H"); Serial
+                        604800 ; Refresh
+                        86400  ; Retry
+                        2419200 ; Expire
+                        604800 ); Negative Cache TTL
+@   IN  NS  mylta.it31.com.
+@   IN  A   192.232.4.5
+www IN CNAME mylta.it31.com.
+EOL
+
+
+    # Restart BIND to apply changes
+    service bind9 restart
+}
+
+# Call the function to execute the configuration
+config
+```
+kemudian di running menggunakan:
+```bash
+chmod +x no16.sh
+./no16.sh
+```
+maka akan jalan dengan sendirinya. Dan hasilnya seperti dibawah berarti sudah berjalan dengan baik.
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no16c1.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no16c2.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no16c3.png)
+
+### PROBLEM
+---
+17. Agar aman, buatlah konfigurasi agar mylta.xxx.com hanya dapat diakses melalui port 14000 dan 14400.
+
+### SOLUTION
+---
+
+### PROBLEM
+---
+18. Apa bila ada yang mencoba mengakses IP mylta akan secara otomatis dialihkan ke www.mylta.xxx.com
+
+### SOLUTION
+---
+Untuk solusi nomor 18 ini, kita ubah untuk domain www.redzone.xxx.com mengarah ke severny kita ubah isi dalam file yang berada di /etc/bind/jarkom/mylta.it31.com yang sudah dibuat sebelumnya. Dengan isinya menggunakan file .sh untuk di overwrite menggunakan cat seperti code dibawah ini dengan menambahkan Reverse DNS (Record PTR) pada domain www.mylta.it31.com:
+Pertama dengan menginstall dns pada setiap client menggunakan file .sh  dibawah:
+```bash
+#!/bin/bash
+
+# Install package dnsutils
+apt-get update
+apt-get install dnsutils -y
+
+```
+kemudian di running menggunakan:
+```bash
+chmod +x no6c.sh
+./no6c.sh
+```
+Setelah instalasi selesai, kemudian kembali pada server pochinki untuk mengganti pada /etc/bind/jarkom/redzone.it31.com
+```bash
+#!/bin/bash
+
+echo 'zone "4.236.192.in-addr.arpa.mylta" {
+    type master;
+    file "/etc/bind/jarkom/4.236.192.in-addr.arpa.mylta";
+};' >> /etc/bind/named.conf.local
+
+cp /etc/bind/db.local /etc/bind/jarkom/4.232.192.in-addr.arpa
+
+# Configure each domain
+    config() {
+cat <<EOL > /etc/bind/jarkom/4.232.192.in-addr.arpa
+$TTL    604800
+@       IN      SOA     mylta.it31.com. mylta.it31.com. (
+                        2024050301      ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+4.232.192.in-addr.arpa    IN      NS      mylta.it31.com.
+2                       IN      PTR       192.232.4.5     ; IP mylta' > /etc/bind/jarkom/3.232.192.in-addr.arpa
+
+EOL
+
+    # Restart BIND to apply changes
+    service bind9 restart
+}
+
+# Call the function to execute the configuration
+config
+```
+kemudian di running menggunakan:
+```bash
+chmod +x no6.sh
+./no6.sh
+```
+Hasilnya akan seperti sebelumnya, Kemudian setelah berhasil dijalankan maka kita coba di setiap client untuk ping IP dari mylta dan berhasil seperti gambar dibawah:
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no18c1.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no18c2.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no18c3.png)
+
+### PROBLEM
+---
+19. Karena probset sudah kehabisan ide masuk ke salah satu worker buatkan akses direktori listing yang mengarah ke resource worker2
+
+### SOLUTION
+---
+
+### PROBLEM
+---
+20. Worker tersebut harus dapat di akses dengan tamat.xxx.com dengan alias www.tamat.xxx.com
+
+### SOLUTION
+---
+Untuk solusi nomor 2 ini, kita ubah untuk domain www.airdrop.xxx.com mengarah ke stalber kita ubah isi dalam file yang berada di /etc/bind/jarkom/tamat.it31.com yang sudah dibuat sebelumnya. Dengan isinya menggunakan file .sh untuk di overwrite menggunakan cat seperti code dibawah ini:
+```bash
+#!/bin/bash
+
+# Configure each domain
+    config() {
+cat <<EOL > /etc/bind/jarkom/tamat.it31.com
+\$TTL 604800
+@   IN SOA tamat.it31.com. root.tamat.it31.com. (
+            $(date +"%Y%m%d%H"); Serial
+                        604800 ; Refresh
+                        86400  ; Retry
+                        2419200 ; Expire
+                        604800 ); Negative Cache TTL
+@   IN  NS  tamat.it31.com.
+@   IN  A   192.232.4.2
+www IN CNAME tamat.it31.com.
+EOL
+
+
+    # Restart BIND to apply changes
+    service bind9 restart
+}
+
+# Call the function to execute the configuration
+config
+```
+kemudian di running mengguanakan:
+```bash
+chmod +x no2-.sh
+./no20.sh
+```
+Hasilnya akan seperti seblumnya, Kemudian setelah berhasil dijalankan maka kita coba di setiap client untuk ping www.airdrop.it31.com.
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no20c1.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no20c2.png)
+
+![](https://github.com/mrvlvenom/Jarkom-Modul-2-IT31-2024/blob/main/img/hasil_no20c3.png)
 
 
